@@ -56,8 +56,12 @@ void CatalystPerformerAudioProcessor::changeProgramName(int, const juce::String&
 {
 }
 
-void CatalystPerformerAudioProcessor::prepareToPlay(double, int)
+void CatalystPerformerAudioProcessor::prepareToPlay(double sampleRate, int)
 {
+    sampleRateHz = sampleRate;
+    wasPlaying = false;
+    noteOnSent = false;
+    samplesUntilNoteOff = 0;
 }
 
 void CatalystPerformerAudioProcessor::releaseResources()
@@ -77,7 +81,44 @@ void CatalystPerformerAudioProcessor::processBlock(juce::AudioBuffer<float>& buf
 
     // MIDI FX: no audio processing, just pass MIDI through for now.
     buffer.clear();
-    juce::ignoreUnused(midiMessages);
+
+    juce::AudioPlayHead::CurrentPositionInfo posInfo;
+    const auto hasPlayhead = getPlayHead() != nullptr && getPlayHead()->getCurrentPosition(posInfo);
+    const bool isPlaying = hasPlayhead && posInfo.isPlaying;
+
+    if (isPlaying && !wasPlaying)
+    {
+        // Transport just started: send a test C4 note on.
+        const int midiChannel = 1;
+        const int midiNote = 60; // C4
+        midiMessages.addEvent(juce::MidiMessage::noteOn(midiChannel, midiNote, (juce::uint8) 100), 0);
+        noteOnSent = true;
+        samplesUntilNoteOff = static_cast<int>(sampleRateHz * 0.5); // 500ms
+    }
+
+    if (noteOnSent)
+    {
+        samplesUntilNoteOff -= buffer.getNumSamples();
+        if (samplesUntilNoteOff <= 0)
+        {
+            const int midiChannel = 1;
+            const int midiNote = 60; // C4
+            midiMessages.addEvent(juce::MidiMessage::noteOff(midiChannel, midiNote), 0);
+            noteOnSent = false;
+            samplesUntilNoteOff = 0;
+        }
+    }
+
+    if (!isPlaying && wasPlaying && noteOnSent)
+    {
+        const int midiChannel = 1;
+        const int midiNote = 60; // C4
+        midiMessages.addEvent(juce::MidiMessage::noteOff(midiChannel, midiNote), 0);
+        noteOnSent = false;
+        samplesUntilNoteOff = 0;
+    }
+
+    wasPlaying = isPlaying;
 }
 
 void CatalystPerformerAudioProcessor::processBlock(juce::AudioBuffer<double>& buffer, juce::MidiBuffer& midiMessages)
@@ -85,7 +126,43 @@ void CatalystPerformerAudioProcessor::processBlock(juce::AudioBuffer<double>& bu
     juce::ScopedNoDenormals noDenormals;
 
     buffer.clear();
-    juce::ignoreUnused(midiMessages);
+
+    juce::AudioPlayHead::CurrentPositionInfo posInfo;
+    const auto hasPlayhead = getPlayHead() != nullptr && getPlayHead()->getCurrentPosition(posInfo);
+    const bool isPlaying = hasPlayhead && posInfo.isPlaying;
+
+    if (isPlaying && !wasPlaying)
+    {
+        const int midiChannel = 1;
+        const int midiNote = 60; // C4
+        midiMessages.addEvent(juce::MidiMessage::noteOn(midiChannel, midiNote, (juce::uint8) 100), 0);
+        noteOnSent = true;
+        samplesUntilNoteOff = static_cast<int>(sampleRateHz * 0.5);
+    }
+
+    if (noteOnSent)
+    {
+        samplesUntilNoteOff -= buffer.getNumSamples();
+        if (samplesUntilNoteOff <= 0)
+        {
+            const int midiChannel = 1;
+            const int midiNote = 60; // C4
+            midiMessages.addEvent(juce::MidiMessage::noteOff(midiChannel, midiNote), 0);
+            noteOnSent = false;
+            samplesUntilNoteOff = 0;
+        }
+    }
+
+    if (!isPlaying && wasPlaying && noteOnSent)
+    {
+        const int midiChannel = 1;
+        const int midiNote = 60; // C4
+        midiMessages.addEvent(juce::MidiMessage::noteOff(midiChannel, midiNote), 0);
+        noteOnSent = false;
+        samplesUntilNoteOff = 0;
+    }
+
+    wasPlaying = isPlaying;
 }
 
 bool CatalystPerformerAudioProcessor::hasEditor() const

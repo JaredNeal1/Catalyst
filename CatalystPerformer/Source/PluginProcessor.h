@@ -38,5 +38,10 @@ public:
     void setStateInformation(const void* data, int sizeInBytes) override;
 
 private:
+    double sampleRateHz = 44100.0;
+    bool wasPlaying = false;
+    bool noteOnSent = false;
+    int samplesUntilNoteOff = 0;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CatalystPerformerAudioProcessor)
 };

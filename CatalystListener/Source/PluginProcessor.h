@@ -1,8 +1,10 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include <atomic>
 
-class CatalystListenerAudioProcessor : public juce::AudioProcessor
+class CatalystListenerAudioProcessor : public juce::AudioProcessor,
+                                       private juce::Timer
 {
 public:
     CatalystListenerAudioProcessor();
@@ -37,6 +39,25 @@ public:
     void getStateInformation(juce::MemoryBlock& destData) override;
     void setStateInformation(const void* data, int sizeInBytes) override;
 
+    float getInputLevelDb() const noexcept;
+    void setLearnEnabled(bool enabled);
+
 private:
+    void timerCallback() override;
+    void ensureCaptureBuffers(int numChannels);
+    void writeSnapshotToDisk();
+
+    std::atomic<float> inputRms { 0.0f };
+    std::atomic<bool> learnEnabled { false };
+    juce::SpinLock captureLock;
+    juce::AudioBuffer<float> captureBuffer;
+    juce::AudioBuffer<float> writeBuffer;
+    int captureWritePos = 0;
+    int captureSamplesFilled = 0;
+    int chunkSamples = 0;
+    double sampleRateHz = 44100.0;
+    juce::File outputDir;
+    int writeCounter = 0;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CatalystListenerAudioProcessor)
 };
