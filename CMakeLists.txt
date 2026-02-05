@@ -12,9 +12,15 @@ juce_add_plugin(CatalystListener
     FORMATS AU VST3
     PRODUCT_NAME "Catalyst Listener")
 
+juce_generate_juce_header(CatalystListener)
+
 target_sources(CatalystListener PRIVATE 
     CatalystListener/Source/PluginProcessor.cpp 
     CatalystListener/Source/PluginEditor.cpp)
+
+target_compile_definitions(CatalystListener
+    PUBLIC
+        JUCE_VST3_CAN_REPLACE_VST2=0)
 
 # 3. Catalyst Performer (MIDI FX)
 juce_add_plugin(CatalystPerformer
@@ -27,9 +33,15 @@ juce_add_plugin(CatalystPerformer
     FORMATS AU VST3
     PRODUCT_NAME "Catalyst Performer")
 
+juce_generate_juce_header(CatalystPerformer)
+
 target_sources(CatalystPerformer PRIVATE 
     CatalystPerformer/Source/PluginProcessor.cpp 
     CatalystPerformer/Source/PluginEditor.cpp)
+
+target_compile_definitions(CatalystPerformer
+    PUBLIC
+        JUCE_VST3_CAN_REPLACE_VST2=0)
 
 # 4. Link everything
 target_link_libraries(CatalystListener PRIVATE juce::juce_audio_utils)
